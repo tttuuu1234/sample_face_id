@@ -7,49 +7,40 @@
 
 import SwiftUI
 import SwiftData
+import LocalAuthentication
 
 struct ContentView: View {
-    @Environment(\.modelContext) private var modelContext
-    @Query private var items: [Item]
-
+    @State var isUnlocked: Bool = false
+    
     var body: some View {
-        NavigationSplitView {
-            List {
-                ForEach(items) { item in
-                    NavigationLink {
-                        Text("Item at \(item.timestamp, format: Date.FormatStyle(date: .numeric, time: .standard))")
-                    } label: {
-                        Text(item.timestamp, format: Date.FormatStyle(date: .numeric, time: .standard))
-                    }
-                }
-                .onDelete(perform: deleteItems)
+        VStack {
+            if isUnlocked {
+                Text("生体認証成功")
             }
-            .toolbar {
-                ToolbarItem(placement: .navigationBarTrailing) {
-                    EditButton()
-                }
-                ToolbarItem {
-                    Button(action: addItem) {
-                        Label("Add Item", systemImage: "plus")
-                    }
-                }
-            }
-        } detail: {
-            Text("Select an item")
+            Button(action: {
+                auth()
+            }, label: {
+                Text("生体認証")
+            })
         }
     }
-
-    private func addItem() {
-        withAnimation {
-            let newItem = Item(timestamp: Date())
-            modelContext.insert(newItem)
-        }
-    }
-
-    private func deleteItems(offsets: IndexSet) {
-        withAnimation {
-            for index in offsets {
-                modelContext.delete(items[index])
+    
+    func auth() -> Void {
+        let context = LAContext()
+        var error: NSError?
+        
+        // 生体認証（Face IDやTouch ID）が利用可能であるかどうかを確認
+        if context.canEvaluatePolicy(.deviceOwnerAuthenticationWithBiometrics, error: &error) {
+            let description = "認証が必要です。"
+            
+            context.evaluatePolicy(.deviceOwnerAuthenticationWithBiometrics, localizedReason: description) { success, authenticationError in
+                DispatchQueue.main.async {
+                    if success {
+                        self.isUnlocked = true
+                    } else {
+                        self.isUnlocked = false
+                    }
+                }
             }
         }
     }
